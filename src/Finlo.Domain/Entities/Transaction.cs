@@ -8,8 +8,7 @@ public class Transaction
     public long Amount { get; set; }
     public string? Note { get; set; }
     public DateTime Date { get; set; }
-    public virtual TransactionType Type { get; set; }
-    public bool? IsRecurring { get; set; }
+    public TransactionType Type { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 
@@ -19,5 +18,9 @@ public class Transaction
     public Account Account { get; set; } = null!;
 
     // Every transaction belongs to one category
-    public Category Category { get; set; }
+    public Guid CategoryId { get; set; }
+    public Category Category { get; set; } = null!;
+
+    // Optional: A transaction can be part of a transfer group (for transfers between accounts)
+    public Guid? TransferGroupId { get; set; }
 }
