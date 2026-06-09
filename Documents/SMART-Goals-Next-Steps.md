@@ -1,10 +1,23 @@
 # Finlo SMART Goals - Next Steps
 
-Date: June 8, 2026
+Date: June 9, 2026
 
 ## Purpose
 
 This document translates SMART goals into an actionable sequence starting today, based on current implementation status.
+
+## Architecture Direction (Confirmed)
+
+Preferred backend flow:
+
+Generic Repository -> (Account, Category, Transaction) Repositories -> Services -> Features (API Endpoints)
+
+Design rules:
+
+- Keep the generic repository small and CRUD-focused.
+- Put entity-specific queries/commands in entity-specific repositories.
+- Keep business logic in services, not in endpoints.
+- Keep endpoints thin and orchestration-only.
 
 ## Current Reality Check
 
@@ -16,8 +29,10 @@ This document translates SMART goals into an actionable sequence starting today,
 
 1. Complete Goal 1 (Account CRUD) immediately
 
-- Create IAccountRepository in Application abstractions
-- Create AccountRepository in Infrastructure
+- Create generic repository contract in Application abstractions (for shared CRUD)
+- Create generic repository implementation base in Infrastructure (EF Core)
+- Create IAccountRepository inheriting the generic repository contract
+- Create AccountRepository inheriting the generic repository implementation
 - Create AccountService in Application
 - Add 5 Account endpoints in API:
   - POST /api/accounts
@@ -30,11 +45,16 @@ This document translates SMART goals into an actionable sequence starting today,
 
 2. Complete Goal 2 (Category CRUD)
 
-- Repeat Account vertical-slice structure for Category
+- Create ICategoryRepository inheriting generic repository contract
+- Create CategoryRepository inheriting generic repository implementation
+- Repeat Account vertical-slice structure for Category service and endpoints
 - Ship 5 endpoints and verify all CRUD flows
 
 3. Complete Goal 3 (Transaction CRUD + Balance Sync)
 
+- Create ITransactionRepository inheriting generic repository contract
+- Create TransactionRepository inheriting generic repository implementation
+- Add transaction-specific methods to ITransactionRepository where needed
 - Implement transaction create/update/delete/list/get-by-id
 - Update Account.Balance in the same SaveChangesAsync call
 - Validate account and category existence before writes
@@ -63,8 +83,9 @@ This document translates SMART goals into an actionable sequence starting today,
 
 ### Session A - Account Foundation
 
-- Create Account DTOs and repository abstraction
-- Implement repository + service
+- Create generic repository interface and EF implementation base
+- Create Account DTOs and IAccountRepository (inherits generic)
+- Implement AccountRepository and AccountService
 - Wire DI
 
 ### Session B - Account API Surface
@@ -94,11 +115,28 @@ Recommendation:
 
 A goal is complete only when all are true:
 
-- Repository, service, and endpoints are implemented
+- Generic repository layer is in place and used correctly
+- Entity repository, service, and endpoints are implemented
 - DI is wired
 - Build passes
 - Endpoint behavior is validated
 - Related tests exist (for Goal 6 completion target)
+
+## Suggested Contracts (High-Level)
+
+Use this contract direction to keep implementation consistent:
+
+- `IGenericRepository<TEntity>` for shared CRUD + `SaveChangesAsync`
+- `IAccountRepository : IGenericRepository<Account>`
+- `ICategoryRepository : IGenericRepository<Category>`
+- `ITransactionRepository : IGenericRepository<Transaction>` (+ transaction-specific methods)
+
+Implementation direction:
+
+- `GenericRepository<TEntity>` in Infrastructure
+- `AccountRepository : GenericRepository<Account>, IAccountRepository`
+- `CategoryRepository : GenericRepository<Category>, ICategoryRepository`
+- `TransactionRepository : GenericRepository<Transaction>, ITransactionRepository`
 
 ## Suggested Timeline (Recovery)
 
