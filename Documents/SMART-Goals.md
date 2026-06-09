@@ -2,6 +2,12 @@
 
 > Work in **vertical slices** — build each feature end-to-end (repo → service → endpoint) before moving to the next. Don't build all repos, then all services, then all endpoints.
 
+## Architecture Direction
+
+- Preferred flow: `Generic Repository -> (Account, Category, Transaction) Repository -> Services -> Features`
+- `IGenericRepository<TEntity>` handles shared CRUD only.
+- Entity repositories inherit the generic contract and hold entity-specific queries.
+
 ## Already Done
 
 - Domain entities (`Account`, `Category`, `Transaction`) and enums (`AccountType`, `TransactionType`)
@@ -12,37 +18,37 @@
 
 ## Goal 1: Account CRUD (vertical slice)
 
-| Criteria       | Detail                                                                                                                             |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| **Specific**   | Build `IAccountRepository` → `AccountRepository` → `AccountService` → Account endpoints (Create, GetById, GetAll, Update, Delete). |
-| **Measurable** | 1 repo interface, 1 repo implementation, 1 service, 5 endpoints.                                                                   |
-| **Achievable** | DbContext and configuration already exist.                                                                                         |
-| **Relevant**   | Accounts are the foundation — transactions depend on them.                                                                         |
-| **Time-bound** | By **June 7, 2026**.                                                                                                               |
+| Criteria       | Detail                                                                                                                                                                                                |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Specific**   | Build `IGenericRepository<TEntity>` + `GenericRepository<TEntity>`, then `IAccountRepository` → `AccountRepository` → `AccountService` → Account endpoints (Create, GetById, GetAll, Update, Delete). |
+| **Measurable** | 1 generic repo interface, 1 generic repo implementation, 1 account repo interface, 1 account repo implementation, 1 service, 5 endpoints.                                                             |
+| **Achievable** | DbContext and configuration already exist.                                                                                                                                                            |
+| **Relevant**   | Accounts are the foundation — transactions depend on them.                                                                                                                                            |
+| **Time-bound** | By **June 7, 2026**.                                                                                                                                                                                  |
 
 ---
 
 ## Goal 2: Category CRUD (vertical slice)
 
-| Criteria       | Detail                                                           |
-| -------------- | ---------------------------------------------------------------- |
-| **Specific**   | Same pattern as Goal 1 for `Category`.                           |
-| **Measurable** | 1 repo interface, 1 repo implementation, 1 service, 5 endpoints. |
-| **Achievable** | Same pattern — copy the structure from Account and adapt.        |
-| **Relevant**   | Transactions require a category. Must exist before transactions. |
-| **Time-bound** | By **June 9, 2026**.                                             |
+| Criteria       | Detail                                                                             |
+| -------------- | ---------------------------------------------------------------------------------- |
+| **Specific**   | Same pattern as Goal 1 for `Category`, reusing generic repository foundation.      |
+| **Measurable** | 1 category repo interface, 1 category repo implementation, 1 service, 5 endpoints. |
+| **Achievable** | Same pattern — copy the structure from Account and adapt.                          |
+| **Relevant**   | Transactions require a category. Must exist before transactions.                   |
+| **Time-bound** | By **June 9, 2026**.                                                               |
 
 ---
 
 ## Goal 3: Transaction CRUD (vertical slice)
 
-| Criteria       | Detail                                                                                                                            |
-| -------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| **Specific**   | Same pattern for `Transaction`. On create/update/delete, update the parent `Account.Balance` in the same `SaveChangesAsync` call. |
-| **Measurable** | 1 repo interface, 1 repo implementation, 1 service, 5 endpoints. Balance stays in sync.                                           |
-| **Achievable** | Account and Category endpoints are done — transactions can reference them.                                                        |
-| **Relevant**   | Core feature of the app.                                                                                                          |
-| **Time-bound** | By **June 12, 2026**.                                                                                                             |
+| Criteria       | Detail                                                                                                                                                                         |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Specific**   | Same pattern for `Transaction` with transaction-specific repository methods. On create/update/delete, update the parent `Account.Balance` in the same `SaveChangesAsync` call. |
+| **Measurable** | 1 transaction repo interface, 1 transaction repo implementation, 1 service, 5 endpoints. Balance stays in sync.                                                                |
+| **Achievable** | Account and Category endpoints are done — transactions can reference them.                                                                                                     |
+| **Relevant**   | Core feature of the app.                                                                                                                                                       |
+| **Time-bound** | By **June 12, 2026**.                                                                                                                                                          |
 
 ---
 

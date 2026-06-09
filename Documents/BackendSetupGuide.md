@@ -8,6 +8,14 @@
 - **Infrastructure layer** — `AppDbContext`, 3 Fluent API configurations, SQLite connection, DI extension, initial migration applied
 - **API layer** — `Program.cs` with DI wiring and OpenAPI; still has the default weatherforecast endpoint
 
+### Architecture Direction (as of June 9, 2026)
+
+- Preferred flow: `Generic Repository -> (Account, Category, Transaction) Repositories -> Services -> Features (Endpoints)`
+- Generic repository should stay small and CRUD-focused.
+- Entity repositories inherit generic contract and add domain-specific methods only when needed.
+- Services contain business rules and orchestration.
+- Endpoints stay thin and delegate to services.
+
 ### What's Not Done
 
 - **Application layer** — empty (no repository interfaces, no use cases, no DTOs)
@@ -27,7 +35,7 @@ src/
 
   Finlo.Application/
     Abstractions/
-      Repositories/     ← IAccountRepository.cs, ICategoryRepository.cs, ITransactionRepository.cs
+      Repositories/     ← IGenericRepository.cs, IAccountRepository.cs, ICategoryRepository.cs, ITransactionRepository.cs
     DTOs/
       Accounts/         ← CreateAccountRequest.cs, AccountResponse.cs
       Categories/       ← CreateCategoryRequest.cs, CategoryResponse.cs
@@ -40,7 +48,7 @@ src/
     Persistence/
       Data/             ← AppDbContext.cs, Migrations/
       Configurations/   ← AccountConfiguration.cs, CategoryConfiguration.cs, TransactionConfiguration.cs
-      Repositories/     ← AccountRepository.cs, CategoryRepository.cs, TransactionRepository.cs
+      Repositories/     ← GenericRepository.cs, AccountRepository.cs, CategoryRepository.cs, TransactionRepository.cs
     DependencyInjection.cs
 
   Finlo.Api/
@@ -56,61 +64,62 @@ tests/
 
 ## Step-by-Step: What to Build Next
 
-### Step 1 — Repository Interfaces (Application Layer)
+### Step 1 — Generic + Entity Repository Interfaces (Application Layer)
 
-Create interfaces in `Finlo.Application/Abstractions/Repositories/`. Each repository needs a minimal contract:
+Create interfaces in `Finlo.Application/Abstractions/Repositories/`.
+
+Start with a shared generic contract:
 
 ```csharp
-public interface IAccountRepository
+public interface IGenericRepository<TEntity> where TEntity : class
 {
-    Task<Account?> GetByIdAsync(Guid id, CancellationToken ct = default);
-    Task<List<Account>> ListAsync(CancellationToken ct = default);
-    Task AddAsync(Account account, CancellationToken ct = default);
-    void Update(Account account);
-    void Delete(Account account);
-    Task SaveChangesAsync(CancellationToken ct = default);
+  Task<TEntity?> GetByIdAsync(Guid id, CancellationToken ct = default);
+  Task<List<TEntity>> ListAsync(CancellationToken ct = default);
+  Task AddAsync(TEntity entity, CancellationToken ct = default);
+  void Update(TEntity entity);
+  void Delete(TEntity entity);
+  Task SaveChangesAsync(CancellationToken ct = default);
 }
 ```
 
-Repeat the same pattern for `ICategoryRepository` and `ITransactionRepository`. The transaction repository should add:
+Then create entity-specific interfaces inheriting the generic contract:
 
 ```csharp
-Task<List<Transaction>> GetByTransferGroupIdAsync(Guid transferGroupId, CancellationToken ct = default);
-```
-
-### Step 2 — Repository Implementations (Infrastructure Layer)
-
-Create concrete classes in `Finlo.Infrastructure/Persistence/Repositories/` that inject `AppDbContext` and implement the interfaces.
-
-```csharp
-public class AccountRepository : IAccountRepository
+public interface IAccountRepository : IGenericRepository<Account>
 {
-    private readonly AppDbContext _db;
-    public AccountRepository(AppDbContext db) => _db = db;
-
-    public async Task<Account?> GetByIdAsync(Guid id, CancellationToken ct = default)
-        => await _db.Accounts.FindAsync([id], ct);
-
-    public async Task<List<Account>> ListAsync(CancellationToken ct = default)
-        => await _db.Accounts.ToListAsync(ct);
-
-    public async Task AddAsync(Account account, CancellationToken ct = default)
-        => await _db.Accounts.AddAsync(account, ct);
-
-    public void Update(Account account) => _db.Accounts.Update(account);
-
-    public void Delete(Account account) => _db.Accounts.Remove(account);
-
-    public async Task SaveChangesAsync(CancellationToken ct = default)
-        => await _db.SaveChangesAsync(ct);
 }
 ```
+
+Repeat for `ICategoryRepository`. For transactions, inherit generic and add transaction-specific methods:
+
+```csharp
+public interface ITransactionRepository : IGenericRepository<Transaction>
+{
+  Task<List<Transaction>> GetByTransferGroupIdAsync(Guid transferGroupId, CancellationToken ct = default);
+}
+```
+
+### Step 2 — Generic + Entity Repository Implementations (Infrastructure Layer)
+
+Create `GenericRepository<TEntity>` in `Finlo.Infrastructure/Persistence/Repositories/` for shared EF Core CRUD behavior.
+
+Then create concrete entity repositories that inherit it.
+
+```csharp
+public class AccountRepository : GenericRepository<Account>, IAccountRepository
+{
+  public AccountRepository(AppDbContext db) : base(db) { }
+}
+```
+
+Keep custom queries only in entity repositories when necessary.
 
 ### Step 3 — Register Repositories in DI
 
-Update `DependencyInjection.cs` to register all repositories as scoped:
+Update `DependencyInjection.cs` to register generic + entity repositories as scoped:
 
 ```csharp
+services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 services.AddScoped<IAccountRepository, AccountRepository>();
 services.AddScoped<ICategoryRepository, CategoryRepository>();
 services.AddScoped<ITransactionRepository, TransactionRepository>();
@@ -133,6 +142,8 @@ Repeat for Category and Transaction.
 ### Step 5 — Application Services (Application Layer)
 
 Create services in `Finlo.Application/Services/` that orchestrate repository calls and map between DTOs and entities. Each service method handles one use case.
+
+Services should depend on entity repositories (for example `IAccountRepository`), not on EF directly.
 
 ```csharp
 public class AccountService : IAccountService
@@ -232,6 +243,7 @@ var summary = await _db.Transactions
 ## Key Principles
 
 - **No over-engineering** — no CQRS, no MediatR, no UnitOfWork abstraction. Repositories call `SaveChangesAsync` directly.
+- **Generic repository is for shared CRUD only** — avoid forcing domain-specific queries into the generic contract.
 - **Domain stays clean** — no EF Core references in Domain or Application.
 - **Transactional writes** — always update balances and insert transactions in the same `SaveChangesAsync` call.
 - **Validate at the boundary** — check nulls, required fields, and business rules in the service layer.
