@@ -2,7 +2,7 @@ using Finlo.Application.Interfaces;
 using Finlo.Infrastructure.Persistence.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace Finlo.Infrastructure.Repositories.Common;
+namespace Finlo.Infrastructure.Repositories;
 
 public class GenericRepository<TEntity, TKey> : IGenericRepository<TEntity, TKey>
     where TEntity : class
