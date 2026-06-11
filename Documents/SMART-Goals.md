@@ -8,6 +8,12 @@
 - `IGenericRepository<TEntity>` handles shared CRUD only.
 - Entity repositories inherit the generic contract and hold entity-specific queries.
 
+## Temporary Delivery Decision
+
+- For now, it is acceptable to keep `SaveChangesAsync` inside the repository layer to unblock Goal 1 and keep implementation moving.
+- Target architecture remains service orchestration with a dedicated `UnitOfWork` for commit boundaries once Account and Category CRUD are working.
+- Refactor trigger: before or during Goal 3, because transaction balance updates and transfers need a single commit across multiple repository operations.
+
 ## Already Done
 
 - Domain entities (`Account`, `Category`, `Transaction`) and enums (`AccountType`, `TransactionType`)

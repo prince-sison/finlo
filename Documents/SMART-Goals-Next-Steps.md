@@ -19,6 +19,12 @@ Design rules:
 - Keep business logic in services, not in endpoints.
 - Keep endpoints thin and orchestration-only.
 
+Current temporary compromise:
+
+- `SaveChangesAsync` may live in the repository layer for now so Goal 1 can move forward without adding `UnitOfWork` yet.
+- This is a delivery shortcut, not the final architecture.
+- Move commit control to `UnitOfWork` before or during Goal 3, when one service operation starts touching both `Transaction` and `Account` in the same commit.
+
 ## Current Reality Check
 
 - Goal 1 deadline (Account CRUD) has passed and should be recovered first.
@@ -111,6 +117,11 @@ Recommendation:
 - Adopt decimal for financial correctness and align Domain, mapping, and migration.
 - If keeping long, define minor-unit convention explicitly and update all DTOs and calculations consistently.
 
+There is also a persistence-boundary decision already acknowledged:
+
+- Short term: repository-level `SaveChangesAsync` is acceptable for Goal 1 and Goal 2.
+- Long term: introduce `IUnitOfWork.SaveChangesAsync()` so services own transaction boundaries for Goal 3 and Goal 4.
+
 ## Done Criteria Per Goal
 
 A goal is complete only when all are true:
@@ -126,7 +137,8 @@ A goal is complete only when all are true:
 
 Use this contract direction to keep implementation consistent:
 
-- `IGenericRepository<TEntity>` for shared CRUD + `SaveChangesAsync`
+- Short term: `IGenericRepository<TEntity>` for shared CRUD + optional `SaveChangesAsync`
+- Long term target: `IGenericRepository<TEntity>` for shared CRUD only, with `IUnitOfWork` handling commits
 - `IAccountRepository : IGenericRepository<Account>`
 - `ICategoryRepository : IGenericRepository<Category>`
 - `ITransactionRepository : IGenericRepository<Transaction>` (+ transaction-specific methods)
@@ -137,6 +149,7 @@ Implementation direction:
 - `AccountRepository : GenericRepository<Account>, IAccountRepository`
 - `CategoryRepository : GenericRepository<Category>, ICategoryRepository`
 - `TransactionRepository : GenericRepository<Transaction>, ITransactionRepository`
+- Future refactor: add `UnitOfWork` in Infrastructure and inject it into services that need multi-repository commit control
 
 ## Suggested Timeline (Recovery)
 
