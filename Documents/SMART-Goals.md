@@ -20,23 +20,24 @@
 - `AppDbContext`, 3 Fluent API configurations, SQLite connection, initial migration
 - DI wiring in `Program.cs`
 
-## Current Task: Account Service (30 mins)
+## Current Task: Account API Endpoints (Minimal API) (30 mins)
 
-- Create `IAccountService` and `AccountService` that consume `IAccountRepository`
+- Gumawa ng Account endpoints gamit ang Minimal API at ikonekta sa `IAccountService`
 
 Definition of done:
 
-- May `IAccountService`
-- May `AccountService`
-- Nakakagamit ng `IAccountRepository`
-- Naka-register sa DI
+- May `POST /api/accounts` endpoint
+- May `GET /api/accounts/{id}` endpoint
+- May `GET /api/accounts` endpoint
+- Minimal API route mapping nasa `Program.cs` (or endpoint extension)
+- Nakakagamit ng `IAccountService`
 - Build passes
 
 Next steps:
 
-- Add `POST /api/accounts` endpoint
-- Add `GET /api/accounts/{id}` endpoint
-- Add `GET /api/accounts` endpoint
+- Add `PUT /api/accounts/{id}` endpoint
+- Add `DELETE /api/accounts/{id}` endpoint
+- Add input validation and proper HTTP status codes
 
 ---
 
